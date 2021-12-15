@@ -96,7 +96,7 @@ mkbuilddir:
 	mkdir -p $(BUILDDIR)
 
 clean:
-	-rm -dr $(BUILDROOT) $(TESTBIN)
+	-rm -dr $(BUILDROOT)
 
 $(BIN): src/rft_converter_main.c $(BUILDPATH)$(OBJS) src/rft_converter.c src/rft_converter.h src/rft_conv_param_builder.c src/rft_conv_param_builder.h
 	$(CC) $(CFLAGS) $(SRC) $(BUILDPATH)$(OBJS) $(LIBSDIR) -lfreetype $(INCLUDE) $(debug) -o $(BIN)

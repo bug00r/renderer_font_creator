@@ -13,6 +13,6 @@
 
 #include "rft_conv_param_builder.h"
 
-void printf_init( rft_conv_param_t* params );
+void convert( rft_conv_param_t* params );
 
 #endif

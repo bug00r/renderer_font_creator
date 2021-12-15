@@ -464,7 +464,7 @@ static void __rft_process_font_face(rft_conv_param_t* params, FT_Library  librar
 
 }
 
-void printf_init( rft_conv_param_t* params )
+void convert( rft_conv_param_t* params )
 {
 	printf("init font converter\n");
 	printf("verbose: %i \n", params->verbose);
