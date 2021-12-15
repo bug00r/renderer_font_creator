@@ -10,6 +10,7 @@
 
 #include "freetype/ftbitmap.h"
 #include "freetype/ftglyph.h"
+#include "freetype/ftoutln.h"
 
 #include "rft_conv_param_builder.h"
 

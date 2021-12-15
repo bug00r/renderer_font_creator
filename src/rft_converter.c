@@ -350,6 +350,34 @@ void __rft_print_bitmap(FT_Bitmap *bitmap) {
 	printf("bitmap attributes:\nrows: %u\nwidth: %u\npitch:%i\npixelmode: %i\n", bitmap->rows, bitmap->width, bitmap->pitch, bitmap->pixel_mode);
 }
 
+int __rft_move_to( const FT_Vector*  to, void* user ) 
+{
+	printf("move_to (x/y): %ld/%ld\n", to->x, to->y);
+	return 0;	
+}
+
+int __rft_line_to( const FT_Vector*  to, void* user ) 
+{
+	printf("line_to (x/y): %ld/%ld\n", to->x, to->y);
+	return 0;
+}
+
+int __rft_conic_to( const FT_Vector*  control, const FT_Vector*  to,void* user ) 
+{
+	printf("conic_to: ctrl_p  (x/y): %ld/%ld ", control->x, control->y);
+	printf("to (x/y): %ld/%ld\n", to->x, to->y);
+	return 0;
+}
+
+int __rft_cubic_to( const FT_Vector*  control1, const FT_Vector*  control2, const FT_Vector*  to, void* user ) 
+{
+	printf("conic_to: ctrl_p 1  (x/y): %ld/%ld ", control1->x, control1->y);
+	printf("ctrl_p 2  (x/y): %ld/%ld ", control2->x, control2->y);
+	printf("to (x/y): %ld/%ld\n", to->x, to->y);
+	return 0;
+}
+
+
 void __rft_process_charcode(rft_conv_param_t* params, FT_Library  _library, FT_Face _face, int hPixel, rft_pcache_t *pCache, FT_ULong charcode) {
 
 	FT_Error error;
@@ -370,6 +398,20 @@ void __rft_process_charcode(rft_conv_param_t* params, FT_Library  _library, FT_F
 			/* not rendered, render it now */
 			FT_GlyphSlot glyphSlot = face->glyph;
 			//if ( glyphSlot->format != FT_GLYPH_FORMAT_BITMAP ) {
+			
+			if ( params->outline ) {
+				printf("Outline Prcessing:\n");
+				const FT_Outline_Funcs _outline_fns = { __rft_move_to, __rft_line_to, __rft_conic_to, __rft_cubic_to,0,0};
+				
+				error = FT_Outline_Decompose( &glyphSlot->outline, /* FT_Outline*              outline,*/
+                        					  &_outline_fns, /*const FT_Outline_Funcs*  func_interface,*/
+                        					  NULL /*void* user*/ );
+				if ( error ) {
+					printf("OUTLINE DECOMPOSE ERROR: %x\n", error);
+				}
+			}
+			
+			
 			error = FT_Render_Glyph( face->glyph,   /* glyph slot  */
 										FT_RENDER_MODE_MONO); /* render mode */
 			if ( error ) {

@@ -25,6 +25,7 @@ static struct option __rft_long_options[] =
           {"verbose", no_argument, NULL, 1},                //&params->verbose
           {"help",   no_argument, NULL, 1},                 //&params->showHelp
           {"hex",   no_argument, NULL, 1},                  //&params->hex
+          {"outline",   no_argument, NULL, 1},                  //&params->outline
           {"hPixel",   required_argument, 0, 'h'},
           {"font",  required_argument, 0, 'd'},
           /* These options don’t set a flag.
@@ -102,6 +103,7 @@ static void __rft_conv_param_init(rft_conv_param_t* _params)
     params->long_options[0].flag = &params->verbose;
     params->long_options[1].flag = &params->showHelp;
     params->long_options[2].flag = &params->hex;
+    params->long_options[3].flag = &params->outline;
 }
 
 static void __rft_conv_param_free(rft_conv_param_t **_params) 

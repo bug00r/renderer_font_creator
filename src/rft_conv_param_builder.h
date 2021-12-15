@@ -19,6 +19,7 @@ typedef struct
     rft_conv_font_param_t *font_param;
     int showHelp;
     int verbose;
+    int outline;
     int hex;
     FT_ULong minCharcode;
     FT_ULong maxCharcode;
