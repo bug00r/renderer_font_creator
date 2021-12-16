@@ -190,20 +190,7 @@ static void __rft_process_font_face(rft_conv_param_t* params, FT_Library  librar
 			fprintf(stderr, "Set Pixel error: %s\n", FT_Error_String(error));
 		}
 
-		//FT_ULong startCharcode = 0x4E00;
-		//FT_ULong charcode = 0x4E1F;
-		//FT_ULong charcode = 0x4E01;
-		//FT_ULong charcode = 0x4FF7;
-		//FT_ULong startCharcode = 0x4E20;
-		//FT_ULong charcode = 0x706C;
-		//FT_ULong endCharcode = 0x4E2C;
-		//FT_ULong endCharcode = 0x9FA5;
-		
-		//for ( FT_ULong curCharcode = pCache->startCode; curCharcode <= pCache->endCode; curCharcode++ ) {
 		__rft_process_charcode(params, library, face, hPixel, pCache, charcode);
-		//}
-
-		//old pCache cleanup
 
 		FT_Done_Face(face);
 	}
