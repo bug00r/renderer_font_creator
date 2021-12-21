@@ -70,7 +70,7 @@ _LIB_SRC_FILES=rft_converter
 LIBSRC=$(patsubst %,src/%,$(patsubst %,%.c,$(_LIB_SRC_FILES)))
 OBJS=rft_converter.o
 LIB_NAME=rft_converter
-LIBS= $(LIB_NAME) freetype
+LIBS= freetype geometry utilsmath mat vec dl_list
 
 TESTLIB=$(patsubst %,-l%,$(LIBS))
 _TEST_SRC_FILES=test_rft_conv_param_builder rft_conv_param_builder
@@ -99,7 +99,7 @@ clean:
 	-rm -dr $(BUILDROOT)
 
 $(BIN): src/rft_converter_main.c $(BUILDPATH)$(OBJS) src/rft_converter.c src/rft_converter.h src/rft_conv_param_builder.c src/rft_conv_param_builder.h
-	$(CC) $(CFLAGS) $(SRC) $(BUILDPATH)$(OBJS) $(LIBSDIR) -lfreetype $(INCLUDE) $(debug) -o $(BIN)
+	$(CC) $(CFLAGS) $(SRC) $(BUILDPATH)$(OBJS) $(LIBSDIR) $(TESTLIB) $(INCLUDE) $(debug) -o $(BIN)
 
 $(BUILDPATH)$(TESTBIN): src/test_rft_conv_param_builder.c src/rft_conv_param_builder.c src/rft_conv_param_builder.h
-	$(CC) $(CFLAGS) $(TESTSRC) $(LIBSDIR) -lfreetype $(INCLUDE) $(debug) -o $(BUILDPATH)$(TESTBIN)
+	$(CC) $(CFLAGS) $(TESTSRC) $(LIBSDIR) $(TESTLIB) $(INCLUDE) $(debug) -o $(BUILDPATH)$(TESTBIN)

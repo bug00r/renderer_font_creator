@@ -14,6 +14,8 @@
 #include "freetype/ftbbox.h"
 
 #include "rft_conv_param_builder.h"
+#include "vec.h"
+#include "geometry.h"
 
 void convert( rft_conv_param_t* params );
 

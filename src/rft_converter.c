@@ -81,30 +81,66 @@ void __rft_set_charcode_range(rft_pcache_t *_cache, FT_ULong startCharcode, FT_U
 	cache->cntCodes = endCharcode - startCharcode + 1; // +1 including last Sign
 }
 
+FT_Vector lastPoint;
+
+static void print_bezier(vec2_t const * const p, vec2_t const * const p2, void *data) {
+	printf("b1: ");
+	//vec2_print(p);
+	vec2_print(p2);
+}
+
+void __rft_set_last_pt(const FT_Vector*  cur)
+{
+	lastPoint.x = cur->x;
+	lastPoint.y = cur->y;
+}
+
 int __rft_move_to( const FT_Vector*  to, void* user ) 
 {
 	printf("move_to (x/y): %ld/%ld\n", to->x, to->y);
+	__rft_set_last_pt(to);
 	return 0;	
 }
 
 int __rft_line_to( const FT_Vector*  to, void* user ) 
 {
 	printf("line_to (x/y): %ld/%ld\n", to->x, to->y);
+	__rft_set_last_pt(to);
 	return 0;
 }
 
-int __rft_conic_to( const FT_Vector*  control, const FT_Vector*  to,void* user ) 
+int __rft_conic_to( const FT_Vector*  control, const FT_Vector*  to, void* user ) 
 {
-	printf("conic_to: ctrl_p  (x/y): %ld/%ld ", control->x, control->y);
-	printf("to (x/y): %ld/%ld\n", to->x, to->y);
+	//printf("conic_to: ctrl_p  (x/y): %ld/%ld\n", control->x, control->y);
+	//printf("to (x/y): %ld/%ld\n", to->x, to->y);
+
+	vec2_t start = { (float)lastPoint.x, (float)lastPoint.y };
+	vec2_t cp = { (float)control->x, (float)control->y };
+	vec2_t end = { (float)to->x, (float)to->y };
+	__rft_set_last_pt(to);
+	uint32_t steps = 3;
+	void *data = NULL;
+	
+	geometry_bezier1(&start, &cp, &end, &steps, print_bezier, data);
 	return 0;
 }
 
 int __rft_cubic_to( const FT_Vector*  control1, const FT_Vector*  control2, const FT_Vector*  to, void* user ) 
 {
-	printf("conic_to: ctrl_p 1  (x/y): %ld/%ld ", control1->x, control1->y);
-	printf("ctrl_p 2  (x/y): %ld/%ld ", control2->x, control2->y);
-	printf("to (x/y): %ld/%ld\n", to->x, to->y);
+	//printf("conic_to: ctrl_p 1  (x/y): %ld/%ld ", control1->x, control1->y);
+	//printf("ctrl_p 2  (x/y): %ld/%ld\n", control2->x, control2->y);
+	//printf("to (x/y): %ld/%ld\n", to->x, to->y);
+
+	vec2_t start = {  (float)lastPoint.x, (float)lastPoint.y };
+	vec2_t cp1 = {  (float)control1->x, (float)control1->y };
+	vec2_t cp2 = { (float)control2->x, (float)control2->y };
+	vec2_t end = {  (float)to->x, (float)to->y };
+	__rft_set_last_pt(to);
+	uint32_t steps = 3;
+	void *data = NULL;
+	
+	geometry_bezier2(&start, &cp1, &cp2, &end, &steps, print_bezier, data);
+
 	return 0;
 }
 
