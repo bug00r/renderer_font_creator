@@ -86,7 +86,8 @@ FT_Vector lastPoint;
 static void print_bezier(vec2_t const * const p, vec2_t const * const p2, void *data) {
 	printf("b1: ");
 	//vec2_print(p);
-	vec2_print(p2);
+	//vec2_print(p2);
+	printf("x: %.0f, y: %.0f\n", (float)round_f(p2->x), (float)round_f(p2->y));
 }
 
 void __rft_set_last_pt(const FT_Vector*  cur)
