@@ -16,6 +16,7 @@
 #include "rft_conv_param_builder.h"
 #include "vec.h"
 #include "geometry.h"
+#include "dl_list.h"
 
 void convert( rft_conv_param_t* params );
 

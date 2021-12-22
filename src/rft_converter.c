@@ -2,6 +2,22 @@
 
 char EMPTY_ENTRY;
 
+typedef struct {
+	/* storing FT_Vector instances */
+	dl_list_t *points;
+} rft_outline_t;
+
+typedef struct {
+	FT_ULong charcode;
+	FT_BBox bbox;
+	/* storing rft_outline_t instance */
+	dl_list_t *outline_list; 
+} rft_outlines_t;
+
+typedef struct {
+	dl_list_t *outlines_list;
+} rft_glyphs_t;
+
 //struct for printcache
 typedef struct {
 	char *fontname;
@@ -12,12 +28,77 @@ typedef struct {
 	FT_ULong cntCodes;
 	FILE *out_file;
 	int emptyWasSet;
+	/* created outline data */
+	rft_glyphs_t *glyphs;
+	FT_Vector lastPoint;
 } rft_pcache_t;
+
+static rft_glyphs_t* __rft_glyphs_new() 
+{
+	rft_glyphs_t *new_glyphs = malloc(sizeof(rft_glyphs_t));
+	new_glyphs->outlines_list = dl_list_new();
+	return new_glyphs;
+} 
+
+static void __rft_glyphs_free( rft_glyphs_t **glyphs )
+{
+	if ( glyphs != NULL && *glyphs != NULL )
+	{
+		rft_glyphs_t *to_delete = *glyphs; 
+		dl_list_free(&to_delete->outlines_list);
+		free(to_delete);
+		*glyphs = NULL;
+	}
+	
+}
+
+static rft_outlines_t* __rft_outlines_new(FT_ULong charcode, FT_BBox *bbox) 
+{
+	rft_outlines_t *new_outlines = malloc(sizeof(rft_outlines_t));
+	new_outlines->outline_list = dl_list_new();
+	new_outlines->charcode = charcode;
+	new_outlines->bbox.xMin = bbox->xMin;
+	new_outlines->bbox.yMin = bbox->yMin;
+	new_outlines->bbox.xMax = bbox->xMax;
+	new_outlines->bbox.yMax = bbox->yMax;
+	return new_outlines;
+} 
+
+static void __rft_outlines_free( rft_outlines_t **outlines )
+{
+	if ( outlines != NULL && *outlines != NULL )
+	{
+		rft_outlines_t *to_delete = *outlines; 
+		dl_list_free(&to_delete->outline_list);
+		free(to_delete);
+		*outlines = NULL;
+	}
+	
+}
+
+static rft_outline_t* __rft_outline_new() 
+{
+	rft_outline_t *new_outline = malloc(sizeof(rft_outline_t));
+	new_outline->points = dl_list_new();
+	return new_outline;
+} 
+
+static void __rft_outline_free( rft_outline_t **outline )
+{
+	if ( outline != NULL && *outline != NULL )
+	{
+		rft_outline_t *to_delete = *outline; 
+		dl_list_free(&to_delete->points);
+		free(to_delete);
+		*outline = NULL;
+	}	
+} 
 
 void __rft_pcache_free(rft_pcache_t *cache) {
 	free(cache->fontname);
 	free(cache->fontfilename);
 	free(cache->familyname);
+	__rft_glyphs_free(&cache->glyphs);
 }
 
 void __rft_pcache_init(rft_pcache_t *cache) {
@@ -29,6 +110,7 @@ void __rft_pcache_init(rft_pcache_t *cache) {
 	cache->startCode = 0UL;
 	cache->endCode = 0UL;
 	cache->cntCodes = 0UL;
+	cache->glyphs = __rft_glyphs_new();
 }
 
 char * __rft_format_string_new(const char * msg, ...) {
@@ -81,66 +163,115 @@ void __rft_set_charcode_range(rft_pcache_t *_cache, FT_ULong startCharcode, FT_U
 	cache->cntCodes = endCharcode - startCharcode + 1; // +1 including last Sign
 }
 
-FT_Vector lastPoint;
+static void __rft_add_new_outline(rft_pcache_t * _cache)
+{
+	rft_pcache_t *cache = _cache;
+	rft_glyphs_t *glyphs = cache->glyphs;
+	rft_outlines_t *outlines = (rft_outlines_t *)glyphs->outlines_list->last->data;
+
+	dl_list_append(outlines->outline_list, __rft_outline_new());
+}
+
+static void __rft_add_new_outlines(rft_pcache_t * _cache, FT_ULong charcode, FT_BBox *bbox)
+{
+	rft_pcache_t *cache = _cache;
+	rft_glyphs_t *glyphs = cache->glyphs;
+
+	dl_list_append(glyphs->outlines_list, __rft_outlines_new(charcode, bbox));
+}
+
+static void __rft_add_point(rft_pcache_t * _cache, const FT_Vector *point)
+{
+	rft_pcache_t *cache = _cache;
+	rft_glyphs_t *glyphs = cache->glyphs;
+	rft_outlines_t *outlines = (rft_outlines_t *)glyphs->outlines_list->last->data;
+	rft_outline_t *outline = (rft_outline_t *)outlines->outline_list->last->data;
+
+	FT_Vector *copy = malloc(sizeof(FT_Vector));
+
+	copy->x = point->x;
+	copy->y = point->y;
+
+	dl_list_append(outline->points, copy);
+}
+
+static void __rft_add_bezier_point(rft_pcache_t * _cache, vec2_t const * const p2)
+{
+	rft_pcache_t *cache = _cache;
+
+	FT_Vector point;
+	point.x = (FT_Pos)p2->x;
+	point.y = (FT_Pos)p2->y;
+
+	__rft_add_point(cache, &point);
+}
 
 static void print_bezier(vec2_t const * const p, vec2_t const * const p2, void *data) {
-	printf("b1: ");
-	//vec2_print(p);
-	//vec2_print(p2);
-	printf("x: %.0f, y: %.0f\n", (float)round_f(p2->x), (float)round_f(p2->y));
+	rft_pcache_t *cache = (rft_pcache_t *)data;
+
+	__rft_add_bezier_point(cache, p2);
+
+	//printf("b1:= x: %.0f, y: %.0f\n", (float)round_f(p2->x), (float)round_f(p2->y));
 }
 
-void __rft_set_last_pt(const FT_Vector*  cur)
+void __rft_set_last_pt(rft_pcache_t *_cache,const FT_Vector*  cur)
 {
-	lastPoint.x = cur->x;
-	lastPoint.y = cur->y;
+	rft_pcache_t *cache = _cache;
+	FT_Vector *lastPoint = &cache->lastPoint;
+	lastPoint->x = cur->x;
+	lastPoint->y = cur->y;
 }
 
-int __rft_move_to( const FT_Vector*  to, void* user ) 
+int __rft_move_to( const FT_Vector*  to, void* data ) 
 {
-	printf("move_to (x/y): %ld/%ld\n", to->x, to->y);
-	__rft_set_last_pt(to);
+	rft_pcache_t *cache = (rft_pcache_t *)data;
+	//printf("move_to (x/y): %ld/%ld\n", to->x, to->y);
+
+	__rft_add_new_outline(cache);
+	__rft_add_point(cache, to);
+	__rft_set_last_pt(cache, to);
+
 	return 0;	
 }
 
-int __rft_line_to( const FT_Vector*  to, void* user ) 
+int __rft_line_to( const FT_Vector*  to, void* data ) 
 {
-	printf("line_to (x/y): %ld/%ld\n", to->x, to->y);
-	__rft_set_last_pt(to);
+	rft_pcache_t *cache = (rft_pcache_t *)data;
+	//printf("line_to (x/y): %ld/%ld\n", to->x, to->y);
+	__rft_add_point(cache, to);
+	__rft_set_last_pt(cache, to);
 	return 0;
 }
 
-int __rft_conic_to( const FT_Vector*  control, const FT_Vector*  to, void* user ) 
+int __rft_conic_to( const FT_Vector*  control, const FT_Vector*  to, void* data ) 
 {
-	//printf("conic_to: ctrl_p  (x/y): %ld/%ld\n", control->x, control->y);
-	//printf("to (x/y): %ld/%ld\n", to->x, to->y);
+	rft_pcache_t *cache = (rft_pcache_t *)data;
+	FT_Vector *lastPoint = &cache->lastPoint;
 
-	vec2_t start = { (float)lastPoint.x, (float)lastPoint.y };
+	vec2_t start = { (float)lastPoint->x, (float)lastPoint->y };
 	vec2_t cp = { (float)control->x, (float)control->y };
 	vec2_t end = { (float)to->x, (float)to->y };
-	__rft_set_last_pt(to);
+	__rft_set_last_pt(cache, to);
 	uint32_t steps = 3;
-	void *data = NULL;
 	
-	geometry_bezier1(&start, &cp, &end, &steps, print_bezier, data);
+	geometry_bezier1(&start, &cp, &end, &steps, print_bezier, cache);
 	return 0;
 }
 
-int __rft_cubic_to( const FT_Vector*  control1, const FT_Vector*  control2, const FT_Vector*  to, void* user ) 
+int __rft_cubic_to( const FT_Vector*  control1, const FT_Vector*  control2, const FT_Vector*  to, void* data ) 
 {
-	//printf("conic_to: ctrl_p 1  (x/y): %ld/%ld ", control1->x, control1->y);
-	//printf("ctrl_p 2  (x/y): %ld/%ld\n", control2->x, control2->y);
-	//printf("to (x/y): %ld/%ld\n", to->x, to->y);
 
-	vec2_t start = {  (float)lastPoint.x, (float)lastPoint.y };
+	rft_pcache_t *cache = (rft_pcache_t *)data;
+	FT_Vector *lastPoint = &cache->lastPoint;
+
+	vec2_t start = {  (float)lastPoint->x, (float)lastPoint->y };
 	vec2_t cp1 = {  (float)control1->x, (float)control1->y };
 	vec2_t cp2 = { (float)control2->x, (float)control2->y };
 	vec2_t end = {  (float)to->x, (float)to->y };
-	__rft_set_last_pt(to);
+	__rft_set_last_pt(cache, to);
 	uint32_t steps = 3;
-	void *data = NULL;
 	
-	geometry_bezier2(&start, &cp1, &cp2, &end, &steps, print_bezier, data);
+	geometry_bezier2(&start, &cp1, &cp2, &end, &steps, print_bezier, cache);
 
 	return 0;
 }
@@ -180,9 +311,13 @@ void __rft_process_charcode(rft_conv_param_t* params, FT_Library  _library, FT_F
 							abbox.xMin, abbox.yMin, abbox.xMax, abbox.yMax);
 				}
 
+				__rft_add_new_outlines(pCache, charcode, &abbox);
+
 				error = FT_Outline_Decompose( &glyphSlot->outline, /* FT_Outline*              outline,*/
                         					  &_outline_fns, /*const FT_Outline_Funcs*  func_interface,*/
-                        					  NULL /*void* user*/ );
+                        					  pCache /*void* user*/ );
+
+				/* MAYBE PRINT OUTLINE HERE */
 				if ( error ) {
 					printf("OUTLINE DECOMPOSE ERROR: %x\n", error);
 				}
@@ -234,6 +369,76 @@ static void __rft_process_font_face(rft_conv_param_t* params, FT_Library  librar
 
 }
 
+/*
+typedef struct {
+	FT_ULong charcode;
+	FT_BBox bbox;
+	// storing rft_outline_t instance
+	dl_list_t *outline_list; 
+} rft_outlines_t;
+*/
+static void __rft_print_bbox(FILE *out_file, rft_outlines_t *outlines)
+{
+	FT_BBox *bbox = &outlines->bbox;
+	fprintf(out_file, "static const rf_bbox_t bbox_%lx = { %li, %li, %li, %li };\n",
+	  outlines->charcode, bbox->xMin, bbox->yMin, bbox->xMax, bbox->yMax);
+}
+
+typedef struct {
+	FILE *out_file;
+	size_t cnt;
+	FT_ULong charcode;
+} rft_outline_print_t;
+
+static void __rft_print_outline(void **data, void *eachdata)
+{
+	rft_outlines_t *outlines = (rft_outlines_t *)*data;
+	rft_outline_print_t *rft_op = (rft_outline_print_t *)eachdata;
+
+	//static vec2_t outlinePts1_1[5] = {
+    //{0.f, 0.f}, {0.f, 100.f}, {100.f, 100.f}, {100.f, 0.f}, {0.f, 0.f},
+	//};
+
+	//HERE WE WILL CONTINUE ADDING VECTOR STRING
+	fprintf(rft_op->out_file, "static vec2_t outlinePts%lx_%lli[] = {};\n",
+		  rft_op->charcode, rft_op->cnt++);
+}
+
+static void __rft_print_outlines(void **data, void *eachdata)
+{
+	rft_outlines_t *outlines = (rft_outlines_t *)*data;
+	FILE *out_file = (FILE *)eachdata;
+
+	__rft_print_bbox(out_file, outlines);
+
+	rft_outline_print_t rft_op;
+	rft_op.out_file = out_file;
+	rft_op.cnt = 0;
+	rft_op.charcode = outlines->charcode;
+
+	dl_list_each_data(outlines->outline_list, &rft_op, __rft_print_outline);
+
+}
+
+static void __rft_print_glyphs(FILE *out_file, rft_glyphs_t * glyphs)
+{
+
+	dl_list_each_data(glyphs->outlines_list, out_file, __rft_print_outlines);
+}
+
+static void __rft_print_complete_file(rft_pcache_t *pCache)
+{
+	pCache->out_file = fopen(pCache->fontfilename, "w");
+
+	__rft_print_header(pCache);
+
+	rft_glyphs_t * glyphs = pCache->glyphs;
+
+	__rft_print_glyphs(pCache->out_file, glyphs);
+
+	fclose(pCache->out_file);
+}
+
 void convert( rft_conv_param_t* params )
 {
 	printf("init font converter\n");
@@ -262,17 +467,13 @@ void convert( rft_conv_param_t* params )
 
 		__rft_create_font_file_name(pCache);
 
-		pCache->out_file = fopen(pCache->fontfilename, "w");
-
-		__rft_print_header(pCache);
-
 		__rft_set_charcode_range(pCache, params->minCharcode, params->maxCharcode);
 
 		for ( FT_ULong curCharcode = params->minCharcode; curCharcode <= params->maxCharcode ; curCharcode++ ) {
 			__rft_process_font_face(params, library, pCache, curCharcode);
 		}
 
-		fclose(pCache->out_file);
+		__rft_print_complete_file(pCache);
 
 		__rft_pcache_free(pCache);
 

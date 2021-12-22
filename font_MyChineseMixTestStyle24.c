@@ -4,3 +4,33 @@
 //including renderer header
 #include "vec.h"
 
+static const rf_bbox_t bbox_28 = { 92, -320, 456, 1088 };
+static vec2_t outlinePts28_0[] = {};
+static const rf_bbox_t bbox_29 = { 56, -320, 419, 1088 };
+static vec2_t outlinePts29_0[] = {};
+static const rf_bbox_t bbox_2a = { 51, 640, 547, 1088 };
+static vec2_t outlinePts2a_0[] = {};
+static const rf_bbox_t bbox_2b = { 85, 128, 812, 896 };
+static vec2_t outlinePts2b_0[] = {};
+static const rf_bbox_t bbox_2c = { 129, -192, 292, 128 };
+static vec2_t outlinePts2c_0[] = {};
+static const rf_bbox_t bbox_2d = { 50, 320, 462, 448 };
+static vec2_t outlinePts2d_0[] = {};
+static const rf_bbox_t bbox_2e = { 137, 0, 290, 128 };
+static vec2_t outlinePts2e_0[] = {};
+static const rf_bbox_t bbox_2f = { 0, 0, 427, 1088 };
+static vec2_t outlinePts2f_0[] = {};
+static const rf_bbox_t bbox_30 = { 69, 0, 785, 1088 };
+static vec2_t outlinePts30_0[] = {};
+static vec2_t outlinePts30_1[] = {};
+static const rf_bbox_t bbox_31 = { 170, 0, 576, 1088 };
+static vec2_t outlinePts31_0[] = {};
+static const rf_bbox_t bbox_32 = { 47, 0, 776, 1088 };
+static vec2_t outlinePts32_0[] = {};
+static const rf_bbox_t bbox_33 = { 68, 0, 788, 1088 };
+static vec2_t outlinePts33_0[] = {};
+static const rf_bbox_t bbox_34 = { 23, 0, 783, 1088 };
+static vec2_t outlinePts34_0[] = {};
+static vec2_t outlinePts34_1[] = {};
+static const rf_bbox_t bbox_35 = { 65, 0, 793, 1088 };
+static vec2_t outlinePts35_0[] = {};
