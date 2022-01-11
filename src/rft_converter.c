@@ -196,7 +196,7 @@ void __rft_print_glyph_not_found(rft_pcache_t *cache)
 	FILE *out_file = cache->out_file;
 	fprintf(out_file, "//NOT FOUND DEFAULT GLYPH\n");
 	fprintf(out_file, "static vec2_t outlinePts_empty_0[5] = {{ 0.f, 0.f }, { 0.f, 100.f }, { 100.f, 100.f }, { 100.f, 0.f }, { 0.f, 0.f }};\n");
-	fprintf(out_file, "static vec2_t outlinePts_empty_1[5] = {{ 10.f, 10.f }, { 10.f, 90.f }, { 90.f, 90.f }, { 90.f, 10.f }, { 10.f, 10.f }};\n");
+	fprintf(out_file, "static vec2_t outlinePts_empty_1[5] = {{ 10.f, 10.f }, { 90.f, 10.f }, { 90.f, 90.f }, { 10.f, 90.f }, { 10.f, 10.f }};\n");
 	fprintf(out_file, "static rf_outlines_t glyph_empty_outlines[] = { { &outlinePts_empty_0[0], 5 }, { &outlinePts_empty_1[0], 5 }, { NULL, 0 }};\n");
 	fprintf(out_file, "static rf_glyph_t __rf_glyph_empty = {{ 0, 0, 100, 100 }, &glyph_empty_outlines[0] };\n\n");
 }
@@ -204,7 +204,7 @@ void __rft_print_glyph_not_found(rft_pcache_t *cache)
 void __rft_print_glyph_container(rft_pcache_t *cache)
 {
 	FILE *out_file = cache->out_file;
-	fprintf(out_file, "static rf_glyph_t* __rf_gl_container_get_fn(unsigned long charcode)\n{\n\trf_glyph_t* found = __rf_glyphs[charcode];\n\n\tif( found == NULL )\n\t{\n\t\tfound = &__rf_glyph_empty\n\t}\n}\n\n");
+	fprintf(out_file, "static rf_glyph_t* __rf_gl_container_get_fn(unsigned long charcode)\n{\n\trf_glyph_t* found = ( charcode <= %lu ? __rf_glyphs[charcode] : &__rf_glyph_empty);\n\n\tif( found == NULL )\n\t{\n\t\tfound = &__rf_glyph_empty;\n\t}\n\n\treturn found;\n}\n\n", cache->endCode);
 	fprintf(out_file, "static rf_glyph_container_t __rf_gl_container = { NULL, __rf_gl_container_get_fn };\n");
 }
 
@@ -355,7 +355,7 @@ void __rft_process_charcode(rft_conv_param_t* params, FT_Library  _library, FT_F
 	FT_UInt glyphIdx = FT_Get_Char_Index(face, charcode);
 
 	if ( glyphIdx == 0 ) {
-		printf("%u not found :(\n", glyphIdx);
+		//printf("%u not found :(\n", glyphIdx);
 		__rft_add_empty_outlines(pCache, charcode);
 	} else {
 		//printf("%lx found at idx %i...loading Glyph\n", charcode, glyphIdx);
@@ -507,14 +507,8 @@ static void __rft_print_glyph_entry(FILE *_out_file, rft_outlines_t *_outlines)
 	FT_BBox *bbox = &outlines->bbox;
 	FILE *out_file = _out_file;
 
-	fprintf(out_file, "static rf_glyph_t __rf_glyph_%lx = {{ %li, %li, %li, %li }, &glyph_%lx_outlines[0] };\n", 
+	fprintf(out_file, "static rf_glyph_t __rf_glyph_%lx = {{ %li, %li, %li, %li }, &glyph_%lx_outlines[0] };\n\n", 
 			outlines->charcode, bbox->xMin, bbox->yMin, bbox->xMax, bbox->yMax, outlines->charcode);
-	fprintf(out_file, "__rf_glyphs[%li] = &__rf_glyph_%lx;\n\n", outlines->charcode, outlines->charcode);
-}
-
-static void __rft_print_empty_entry(FILE *out_file, FT_ULong charcode)
-{
-	fprintf(out_file, "__rf_glyphs[%li] = NULL;\n", charcode);
 }
 
 static void __rft_print_outlines(void **data, void *eachdata)
@@ -535,8 +529,6 @@ static void __rft_print_outlines(void **data, void *eachdata)
 		__rft_print_outlines_declaration(out_file, outlines, &rft_op);
 
 		__rft_print_glyph_entry(out_file, outlines);
-	} else {
-		__rft_print_empty_entry(out_file, outlines->charcode);
 	}
 }
 
@@ -556,21 +548,39 @@ typedef struct {
 	FT_Vector lastPoint;
 } rft_pcache_t;
 */
-static void __rft_print_glyph_array_declaration(rft_pcache_t *_pCache)
-{
-	rft_pcache_t *pCache = _pCache;
-	
-	fprintf(pCache->out_file, "static rf_glyph_t* __rf_glyphs[%lu];\n\n", pCache->endCode + 1);
-}
 
 static void __rft_print_glyphs(rft_pcache_t *_pCache, rft_glyphs_t * glyphs)
 {
 	rft_pcache_t *pCache = _pCache;
-	
-	__rft_print_glyph_array_declaration(pCache);
 
 	dl_list_each_data(glyphs->outlines_list, pCache->out_file, __rft_print_outlines);
 }
+
+static void __rft_print_glyph_entries(void **data, void *eachdata)
+{
+	rft_outlines_t *outlines = (rft_outlines_t *)*data;
+	FILE *out_file = (FILE *)eachdata;
+
+	if ( outlines->outline_list != NULL )
+	{
+		fprintf(out_file, "\t\t\t&__rf_glyph_%lx,\n", outlines->charcode);
+	} else {
+		fprintf(out_file, "\t\t\tNULL,\n");
+	}
+}
+
+static void __rft_print_glyphs_array(rft_pcache_t *_pCache, rft_glyphs_t * glyphs)
+{
+	rft_pcache_t *pCache = _pCache;
+
+	fprintf(pCache->out_file, "static rf_glyph_t* __rf_glyphs[%lu] = {\n", pCache->endCode + 1);
+
+	dl_list_each_data(glyphs->outlines_list, pCache->out_file, __rft_print_glyph_entries);
+
+	fprintf(pCache->out_file, "};\n\n");
+}
+
+
 
 static void __rft_print_header_file(rft_pcache_t *pCache)
 {
@@ -597,6 +607,8 @@ static void __rft_print_complete_file(rft_pcache_t *pCache)
 	rft_glyphs_t * glyphs = pCache->glyphs;
 
 	__rft_print_glyphs(pCache, glyphs);
+
+	__rft_print_glyphs_array(pCache, glyphs);
 
 	__rft_print_glyph_container(pCache);
 	__rft_print_glyph_provider(pCache);
