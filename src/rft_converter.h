@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <getopt.h>
+#include <limits.h>
 
 #include <ft2build.h>
 #include FT_FREETYPE_H

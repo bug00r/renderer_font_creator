@@ -25,16 +25,10 @@ static struct option __rft_long_options[] =
           {"verbose", no_argument, NULL, 1},                //&params->verbose
           {"help",   no_argument, NULL, 1},                 //&params->showHelp
           {"hex",   no_argument, NULL, 1},                  //&params->hex
-          {"outline",   no_argument, NULL, 1},                  //&params->outline
+          {"outline",   no_argument, NULL, 1},              //&params->outline
+          {"name",   required_argument, 0, 'n'},
           {"hPixel",   required_argument, 0, 'h'},
           {"font",  required_argument, 0, 'd'},
-          /* These options don’t set a flag.
-             We distinguish them by their indices. */
-          /*{"add",     no_argument,       0, 'a'},
-          {"append",  no_argument,       0, 'b'},
-          {"font",  required_argument, 0, 'd'},
-          {"create",  required_argument, 0, 'c'},
-          {"file",    required_argument, 0, 'f'},*/
           {0, 0, 0, 0}
         };
 
@@ -92,6 +86,7 @@ static void __rft_conv_param_init(rft_conv_param_t* _params)
 {
     rft_conv_param_t* params = _params;
     params->font_param      = NULL;
+    params->name            = NULL;
     params->showHelp        = 0;
     params->verbose         = 0;
     params->hex             = 0;
@@ -111,6 +106,7 @@ static void __rft_conv_param_free(rft_conv_param_t **_params)
     if ( _params != NULL && *_params != NULL ) 
     {
         rft_conv_param_t *params = *_params;
+        free(params->name);
         if ( params->font_param != NULL ) 
         {
             __rft_conv_font_param_free(&params->font_param);
@@ -248,14 +244,19 @@ rft_conv_param_t* rft_conv_param_build(int argc, char* argv[])
         
         switch (c)
         {
-            case 'd':
+            case 'd': {
                 params->cntFonts++;
                 __rft_parse_font_param(params, optarg);
                 break;
-            
+            }
             case 'h': {
                 char *parseEnd;
                 params->hPixel = strtoul(optarg, &parseEnd, 10);
+                break;
+            }
+            case 'n': {
+                params->name = __rft_param_format_string_new("%s", optarg);
+                printf("name: %s\n", params->name);
                 break;
             }
             case '?':

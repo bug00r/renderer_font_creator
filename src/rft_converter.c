@@ -32,6 +32,8 @@ typedef struct {
 	/* created outline data */
 	rft_glyphs_t *glyphs;
 	FT_Vector lastPoint;
+	FT_BBox globalBbox;
+	char *providername;
 } rft_pcache_t;
 
 static rft_glyphs_t* __rft_glyphs_new() 
@@ -54,6 +56,8 @@ static void __rft_outline_free( rft_outline_t **outline )
 
 static void __rft_outline_free_wrapper(void **data, void *eachdata)
 {
+	(void)(eachdata);
+
 	rft_outline_t *outline = (rft_outline_t *)*data;
 	__rft_outline_free(&outline);
 }
@@ -77,6 +81,8 @@ static void __rft_outlines_free( rft_outlines_t **outlines )
 
 static void __rft_outlines_free_wrapper(void **data, void *eachdata)
 {
+	(void)(eachdata);
+
 	rft_outlines_t *outlines = (rft_outlines_t *)*data;
 	__rft_outlines_free(&outlines);
 }
@@ -136,6 +142,7 @@ void __rft_pcache_free(rft_pcache_t *cache) {
 
 void __rft_pcache_init(rft_pcache_t *cache) {
 	cache->fontname = NULL;
+	cache->providername = NULL;
 	cache->fontfilename = NULL;
 	cache->fontfilenameheader = NULL;
 	cache->familyname = NULL;
@@ -144,6 +151,10 @@ void __rft_pcache_init(rft_pcache_t *cache) {
 	cache->startCode = 0UL;
 	cache->endCode = 0UL;
 	cache->cntCodes = 0UL;
+	cache->globalBbox.xMin = LONG_MAX;
+	cache->globalBbox.yMin = LONG_MAX;
+	cache->globalBbox.xMax = LONG_MIN;
+	cache->globalBbox.yMax = LONG_MIN;
 	cache->glyphs = __rft_glyphs_new();
 }
 
@@ -181,9 +192,10 @@ void __rft_create_font_name(rft_pcache_t *cache, FT_Face font_face, int size) {
 	cache->fontname = __rft_format_string_new("%s%s%i", cache->familyname, font_face->style_name, size);
 }
 
-void __rft_create_font_file_name(rft_pcache_t *cache) {
-	cache->fontfilename = __rft_format_string_new("font_%s.c", cache->fontname);
-	cache->fontfilenameheader = __rft_format_string_new("font_%s.h", cache->fontname);
+void __rft_create_font_file_name(rft_pcache_t *_cache) {
+	rft_pcache_t *cache = _cache;
+	cache->fontfilename = __rft_format_string_new("font_provider_%s.c", cache->providername);
+	cache->fontfilenameheader = __rft_format_string_new("font_provider_%s.h", cache->providername);
 }
 
 void __rft_print_header(rft_pcache_t *cache) {
@@ -205,7 +217,11 @@ void __rft_print_glyph_container(rft_pcache_t *cache)
 {
 	FILE *out_file = cache->out_file;
 	fprintf(out_file, "static rf_glyph_t* __rf_gl_container_get_fn(unsigned long charcode)\n{\n\trf_glyph_t* found = ( charcode <= %lu ? __rf_glyphs[charcode] : &__rf_glyph_empty);\n\n\tif( found == NULL )\n\t{\n\t\tfound = &__rf_glyph_empty;\n\t}\n\n\treturn found;\n}\n\n", cache->endCode);
-	fprintf(out_file, "static rf_glyph_container_t __rf_gl_container = { NULL, __rf_gl_container_get_fn };\n");
+	
+	FT_BBox *bbox = &cache->globalBbox;
+	
+	fprintf(out_file, "static rf_glyph_container_t __rf_gl_container = { NULL, __rf_gl_container_get_fn, { %li, %li, %li, %li } };\n", 
+				bbox->xMin, bbox->yMin, bbox->xMax, bbox->yMax);
 }
 
 void __rft_print_glyph_provider(rft_pcache_t *cache)
@@ -214,7 +230,7 @@ void __rft_print_glyph_provider(rft_pcache_t *cache)
 	fprintf(out_file, "static rf_glyph_container_t* __rf_gl_provider_get_fn()\n{\n\treturn &__rf_gl_container;\n}\n\n");
 	fprintf(out_file, "static void __rf_gl_provider_free_fn(rf_glyph_container_t** gl_container)\n{\n\t(void)(gl_container);\n}\n\n");
 	fprintf(out_file, "static rf_provider_t __rf_gl_provider = { NULL, __rf_gl_provider_get_fn, __rf_gl_provider_free_fn };\n");
-	fprintf(out_file, "rf_provider_t* get_default_provider()\n{\n\treturn &__rf_gl_provider;\n}\n\n");
+	fprintf(out_file, "rf_provider_t* get_%s_provider()\n{\n\treturn &__rf_gl_provider;\n}\n\n", cache->providername);
 }
 
 void __rft_set_charcode_range(rft_pcache_t *_cache, FT_ULong startCharcode, FT_ULong endCharcode) {
@@ -276,6 +292,8 @@ static void __rft_add_bezier_point(rft_pcache_t * _cache, vec2_t const * const p
 }
 
 static void print_bezier(vec2_t const * const p, vec2_t const * const p2, void *data) {
+	(void)(p);
+	
 	rft_pcache_t *cache = (rft_pcache_t *)data;
 
 	__rft_add_bezier_point(cache, p2);
@@ -345,11 +363,17 @@ int __rft_cubic_to( const FT_Vector*  control1, const FT_Vector*  control2, cons
 	return 0;
 }
 
+static void __rft_align_global_bbox(FT_BBox *globalbbox, FT_BBox *curbbox)
+{
+	globalbbox->xMin = ( curbbox->xMin < globalbbox->xMin ? curbbox->xMin : globalbbox->xMin);
+	globalbbox->yMin = ( curbbox->yMin < globalbbox->yMin ? curbbox->yMin : globalbbox->yMin);
+	globalbbox->xMax = ( curbbox->xMax > globalbbox->xMax ? curbbox->xMax : globalbbox->xMax);
+	globalbbox->yMax = ( curbbox->yMax > globalbbox->yMax ? curbbox->yMax : globalbbox->yMax);
+}
 
-void __rft_process_charcode(rft_conv_param_t* params, FT_Library  _library, FT_Face _face, int hPixel, rft_pcache_t *pCache, FT_ULong charcode) {
+void __rft_process_charcode(rft_conv_param_t* params, FT_Face _face, rft_pcache_t *pCache, FT_ULong charcode) {
 
 	FT_Error error;
-	FT_Library  library = _library;
 	FT_Face face = _face;
 	//printf("searching charcode: %lx\n", charcode);
 	FT_UInt glyphIdx = FT_Get_Char_Index(face, charcode);
@@ -376,6 +400,8 @@ void __rft_process_charcode(rft_conv_param_t* params, FT_Library  _library, FT_F
 
 				if ( error ) {
 					printf("OUTLINE BBOX ERROR: %x\n", error);
+				} else {
+					__rft_align_global_bbox(&pCache->globalBbox, &abbox);
 				}
 
 				__rft_add_new_outlines(pCache, charcode, &abbox);
@@ -429,7 +455,7 @@ static void __rft_process_font_face(rft_conv_param_t* params, FT_Library  librar
 			fprintf(stderr, "Set Pixel error: %s\n", FT_Error_String(error));
 			__rft_add_empty_outlines(pCache, charcode);	
 		} else {
-			__rft_process_charcode(params, library, face, hPixel, pCache, charcode);
+			__rft_process_charcode(params, face, pCache, charcode);
 		}
 
 		FT_Done_Face(face);
@@ -644,6 +670,7 @@ void convert( rft_conv_param_t* params )
 		__rft_pcache_init(pCache);
 		__rft_create_font_name_test(pCache,"MyChineseMix", hPixel);
 
+		pCache->providername = ( params->name == NULL ? "default" : params->name );
 		__rft_create_font_file_name(pCache);
 
 		__rft_set_charcode_range(pCache, params->minCharcode, params->maxCharcode);

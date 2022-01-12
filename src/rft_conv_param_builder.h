@@ -21,6 +21,7 @@ typedef struct
     int verbose;
     int outline;
     int hex;
+    char *name;
     FT_ULong minCharcode;
     FT_ULong maxCharcode;
     int hPixel;
