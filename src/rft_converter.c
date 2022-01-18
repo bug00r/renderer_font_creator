@@ -339,7 +339,7 @@ int __rft_conic_to( const FT_Vector*  control, const FT_Vector*  to, void* data 
 	vec2_t cp = { (float)control->x, (float)control->y };
 	vec2_t end = { (float)to->x, (float)to->y };
 	__rft_set_last_pt(cache, to);
-	uint32_t steps = 3;
+	uint32_t steps = 5;
 	
 	geometry_bezier1(&start, &cp, &end, &steps, print_bezier, cache);
 	return 0;
@@ -356,7 +356,7 @@ int __rft_cubic_to( const FT_Vector*  control1, const FT_Vector*  control2, cons
 	vec2_t cp2 = { (float)control2->x, (float)control2->y };
 	vec2_t end = {  (float)to->x, (float)to->y };
 	__rft_set_last_pt(cache, to);
-	uint32_t steps = 3;
+	uint32_t steps = 5;
 	
 	geometry_bezier2(&start, &cp1, &cp2, &end, &steps, print_bezier, cache);
 
