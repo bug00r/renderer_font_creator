@@ -72,7 +72,7 @@ static void __rft_outlines_free( rft_outlines_t **outlines )
 		{
 			dl_list_each_data(to_delete->outline_list, NULL, __rft_outline_free_wrapper);
 		}
-
+		dl_list_free(&to_delete->outline_list);
 		free(to_delete);
 		*outlines = NULL;
 	}
@@ -95,6 +95,7 @@ static void __rft_glyphs_free( rft_glyphs_t **glyphs )
 
 		dl_list_each_data(to_delete->outlines_list, NULL, __rft_outlines_free_wrapper);
 
+		dl_list_free(&to_delete->outlines_list);
 		free(to_delete);
 		*glyphs = NULL;
 	}
