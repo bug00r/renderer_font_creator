@@ -54,43 +54,44 @@ CFLAGS+= -std=c11 -Wpedantic -pedantic-errors -Wall -Wextra $(debug)
 #-pg for profiling 
 
 LIBDIR?=/c/dev/lib$(BIT_SUFFIX)
-LIBSDIR?=-L$(LIBDIR)
+LIBSDIR?=-L$(LIBDIR) -L./$(BUILDPATH)
 INCLUDE?=-I/c/dev/include/freetype2 -I/c/dev/include -I/usr/include -I/usr/include/freetype2 -I./src
-
-INCLUDEDIR=$(INCLUDE)
 
 _SRC_FILES=rft_converter_main rft_conv_param_builder
 SRC=$(patsubst %,src/%,$(patsubst %,%.c,$(_SRC_FILES)))
-#$(info $$_TESTSRC is [${_TESTSRC}])
-BIN=rft_converter.exe
 
-LIBSDIR+=-L./$(BUILDDIR)
+BIN=$(BUILDPATH)$(NAME)_main.exe
 
-_LIB_SRC_FILES=rft_converter
-LIBSRC=$(patsubst %,src/%,$(patsubst %,%.c,$(_LIB_SRC_FILES)))
-OBJS=rft_converter.o
-LIB_NAME=rft_converter
-LIBS= freetype geometry utilsmath mat vec dl_list
+NAME=rft_converter
 
-TESTLIB=$(patsubst %,-l%,$(LIBS))
-_TEST_SRC_FILES=test_rft_conv_param_builder rft_conv_param_builder
-TESTSRC=$(patsubst %,src/%,$(patsubst %,%.c,$(_TEST_SRC_FILES)))
-TESTBIN=test_rft_conv_param_builder.exe
+OBJS=$(BUILDPATH)rft_converter_main.o $(BUILDPATH)rft_converter.o $(BUILDPATH)rft_conv_param_builder.o
 
-LIB=lib$(LIB_NAME).a
+LIBNAME=lib$(NAME).a
+LIB=$(BUILDPATH)$(LIBNAME)
 
-all: mkbuilddir $(BIN)
+TESTLIB=$(patsubst %,-l%, $(NAME) freetype geometry utilsmath mat vec dl_list )
+TESTSRC=$(patsubst %,src/%,$(patsubst %,%.c, test_rft_conv_param_builder rft_conv_param_builder ))
+TESTBIN=$(BUILDPATH)test_rft_conv_param_builder.exe
 
-$(BUILDPATH)$(OBJS):
-	$(CC) $(CFLAGS) -c $(LIBSRC) $(INCLUDEDIR) -o $(BUILDPATH)$(OBJS)
+all: mkbuilddir $(LIB) $(BIN) $(TESTBIN)
 
-$(BUILDPATH)$(LIB): $(BUILDPATH)$(OBJS)
-	$(AR) $(ARFLAGS) $(BUILDPATH)$(LIB) $(BUILDPATH)$(OBJS)
+$(OBJS):
+	$(CC) $(CFLAGS) -c src/$(@F:.o=.c) -o $@ $(INCLUDE)
+
+$(LIB): $(OBJS)
+	$(AR) $(ARFLAGS) $@ $^
+
+$(BIN): $(LIB)
+	$(CC) $(CFLAGS) src/$(@F:.exe=.c) -o $@ $(LIBSDIR) $(TESTLIB) $(INCLUDE) $(debug)
+	mv $@ $(BUILDPATH)$(NAME).exe
+
+$(TESTBIN): src/test_rft_conv_param_builder.c
+	$(CC) $(CFLAGS) src/$(@F:.exe=.c) -o $@ $(LIBSDIR) $(TESTLIB) $(INCLUDE) $(debug)
 
 .PHONY: clean mkbuilddir test
 
-test: $(BUILDPATH)$(TESTBIN)
-	./$(BUILDPATH)$(TESTBIN)
+test: $(TESTBIN)
+	./$(TESTBIN)
 
 mkbuilddir:
 	mkdir -p $(BUILDDIR)
@@ -98,8 +99,3 @@ mkbuilddir:
 clean:
 	-rm -dr $(BUILDROOT)
 
-$(BIN): src/rft_converter_main.c $(BUILDPATH)$(OBJS) src/rft_converter.c src/rft_converter.h src/rft_conv_param_builder.c src/rft_conv_param_builder.h
-	$(CC) $(CFLAGS) $(SRC) $(BUILDPATH)$(OBJS) $(LIBSDIR) $(TESTLIB) $(INCLUDE) $(debug) -o $(BIN)
-
-$(BUILDPATH)$(TESTBIN): src/test_rft_conv_param_builder.c src/rft_conv_param_builder.c src/rft_conv_param_builder.h
-	$(CC) $(CFLAGS) $(TESTSRC) $(LIBSDIR) $(TESTLIB) $(INCLUDE) $(debug) -o $(BUILDPATH)$(TESTBIN)
