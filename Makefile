@@ -75,7 +75,7 @@ TESTBIN=$(BUILDPATH)test_rft_conv_param_builder.exe
 
 all: mkbuilddir $(LIB) $(BIN) $(TESTBIN)
 
-$(OBJS):
+$(OBJS): src/rft_converter.c
 	$(CC) $(CFLAGS) -c src/$(@F:.o=.c) -o $@ $(INCLUDE)
 
 $(LIB): $(OBJS)
