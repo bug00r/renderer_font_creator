@@ -302,8 +302,6 @@ static void print_bezier(vec2_t const * const p, vec2_t const * const p2, void *
 	rft_pcache_t *cache = (rft_pcache_t *)data;
 
 	__rft_add_bezier_point(cache, p2);
-
-	//printf("b1:= x: %.0f, y: %.0f\n", (float)round_f(p2->x), (float)round_f(p2->y));
 }
 
 void __rft_set_last_pt(rft_pcache_t *_cache,const FT_Vector*  cur)
@@ -446,7 +444,6 @@ static void __rft_process_font_face(rft_conv_param_t* params, FT_Library  librar
 		fprintf(stderr, "FontFace error: %s\n", FT_Error_String(error));
 		__rft_add_empty_outlines(pCache, charcode);
 	} else {
-		//printf("loaded:\nfamily: %s\nstyle: %s\nglyphs: %li\n", face->family_name, face->style_name, face->num_glyphs);
 
 		int hPixel = params->hPixel;
 
@@ -476,36 +473,11 @@ typedef struct {
 	FT_ULong charcode;
 } rft_outline_print_t;
 
-static void __rft_print_outlines_declaration_record(void **data, void *eachdata)
-{
-	rft_outline_t *outline = (rft_outline_t *)*data;
-	rft_outline_print_t *rft_op = (rft_outline_print_t *)eachdata;
-
-	// { &outlinePts1_1[0], cntOutlinePts1_1}, 
-	fprintf(rft_op->out_file, " { &outlinePts%lx_%lli[0], %u },",
-		  rft_op->charcode, rft_op->cnt++, outline->points->cnt);
-
-}
-
-static void __rft_print_outlines_declaration(FILE *out_file, rft_outlines_t *outlines, rft_outline_print_t *_rft_op)
-{
-	dl_list_t *outline_list = outlines->outline_list;
-	rft_outline_print_t *rft_op = _rft_op;
-
-	fprintf(out_file, "static rf_outlines_t glyph_%lx_outlines[] = {", rft_op->charcode);
-
-	dl_list_each_data(outline_list, rft_op, __rft_print_outlines_declaration_record);
-
-	fprintf(out_file, " { NULL, 0 }};\n");
-
-}
-
 static void __rft_print_point(void **data, void *eachdata)
 {
 	FT_Vector *vector = (FT_Vector *)*data;
 	rft_outline_print_t *rft_op = (rft_outline_print_t *)eachdata;
 	
-	//printf("{ %ld, %ld },", vector->x, vector->y);
     fprintf(rft_op->out_file, "{%ld,%ld}", vector->x, vector->y);
 
 	if ( rft_op->cntPt < rft_op->maxPt )
@@ -522,14 +494,8 @@ static void __rft_print_outline(void **data, void *eachdata)
 	rft_outline_print_t *rft_op = (rft_outline_print_t *)eachdata;
 	dl_list_t *points = outline->points;
 
-	//fprintf(rft_op->out_file, "_SV outlinePts%lx_%lli[%i] = {",
-	//	  rft_op->charcode, rft_op->cnt++, points->cnt);
-
-	//rft_op->cntPt = 0;
 	rft_op->maxPt += points->cnt;
 	dl_list_each_data(points, rft_op, __rft_print_point);
-	
-	//fprintf(rft_op->out_file, "};\n");
 }
 
 static void __rft_print_glyph_entry(FILE *_out_file, rft_outlines_t *_outlines, size_t cntPoints)
@@ -674,7 +640,6 @@ void convert( rft_conv_param_t* params )
 
 		__rft_set_charcode_range(pCache, params->minCharcode, params->maxCharcode);
 
-		//for ( FT_ULong curCharcode = params->minCharcode; curCharcode <= params->maxCharcode ; curCharcode++ ) {
 		for ( FT_ULong curCharcode = 0; curCharcode <= params->maxCharcode ; curCharcode++ ) {
 			__rft_process_font_face(params, library, pCache, curCharcode);
 		}
