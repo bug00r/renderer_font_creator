@@ -1,61 +1,39 @@
-#MAKE?=mingw32-make
-AR?=ar
 ARFLAGS?=rcs
 PATHSEP?=/
-CC=gcc
 BUILDROOT?=build
-
-ifeq ($(CLANG),1)
-	export CC=clang
-endif
 
 BUILDDIR?=$(BUILDROOT)$(PATHSEP)$(CC)
 BUILDPATH?=$(BUILDDIR)$(PATHSEP)
 
-INSTALL_ROOT?=$(BUILDPATH)
-
-#DEBUGSYMBOLS=-ggdb
-DEBUGSYMBOLS=-g
-
-ifeq ($(DEBUG),1)
-	export debug=$(DEBUGSYMBOLS) -Ddebug=1
-	export isdebug=1
+ifndef PREFIX
+	INSTALL_ROOT=$(BUILDPATH)
+else
+	INSTALL_ROOT=$(PREFIX)$(PATHSEP)
+	ifeq ($(INSTALL_ROOT),/)
+	INSTALL_ROOT=$(BUILDPATH)
+	endif
 endif
 
-ifeq ($(ANALYSIS),1)
-	export analysis=-Danalysis=1
-	export isanalysis=1
+ifdef DEBUG
+	CFLAGS+=-ggdb
+	ifeq ($(DEBUG),)
+	CFLAGS+=-Ddebug=1
+	else 
+	CFLAGS+=-Ddebug=$(DEBUG)
+	endif
 endif
-
-ifeq ($(DEBUG),2)
-	export debug=$(DEBUGSYMBOLS) -Ddebug=2
-	export isdebug=1
-endif
-
-ifeq ($(DEBUG),3)
-	export debug=$(DEBUGSYMBOLS) -Ddebug=3
-	export isdebug=1
-endif
-
-ifeq ($(OUTPUT),1)
-	export outimg= -Doutput=1
-endif
-
-
-BIT_SUFFIX=
 
 ifeq ($(M32),1)
 	CFLAGS+=-m32
 	BIT_SUFFIX+=32
 endif
 
-CFLAGS+= -std=c11 -Wpedantic -pedantic-errors -Wall -Wextra $(debug)
+CFLAGS+=-std=c11 -Wpedantic -pedantic-errors -Wall -Wextra
 #-ggdb
 #-pg for profiling 
 
-LIBDIR?=/c/dev/lib$(BIT_SUFFIX)
-LIBSDIR?=-L$(LIBDIR) -L./$(BUILDPATH)
-INCLUDE?=-I/c/dev/include/freetype2 -I/c/dev/include -I/usr/include -I/usr/include/freetype2 -I./src
+LDFLAGS=-L/c/dev/lib$(BIT_SUFFIX) -L./$(BUILDPATH)
+CFLAGS+=-I/c/dev/include/freetype2 -I/c/dev/include -I/usr/include -I/usr/include/freetype2 -I./src
 
 _SRC_FILES=rft_converter_main rft_conv_param_builder
 SRC=$(patsubst %,src/%,$(patsubst %,%.c,$(_SRC_FILES)))
@@ -69,28 +47,28 @@ OBJS=$(BUILDPATH)rft_converter_main.o $(BUILDPATH)rft_converter.o $(BUILDPATH)rf
 LIBNAME=lib$(NAME).a
 LIB=$(BUILDPATH)$(LIBNAME)
 
-TESTLIB=$(patsubst %,-l%, $(NAME) freetype geometry utilsmath mat vec dl_list )
+LDFLAGS+=$(patsubst %,-l%, $(NAME) freetype geometry utilsmath mat vec dl_list )
 TESTSRC=$(patsubst %,src/%,$(patsubst %,%.c, test_rft_conv_param_builder rft_conv_param_builder ))
 TESTBIN=$(BUILDPATH)test_rft_conv_param_builder.exe
 
-all: mkbuilddir $(LIB) $(BIN) $(TESTBIN)
+all: mkbuilddir $(LIB) $(BIN) 
 
 $(OBJS): src/rft_converter.c
-	$(CC) $(CFLAGS) -c src/$(@F:.o=.c) -o $@ $(INCLUDE)
+	$(CC) $(CFLAGS) -c src/$(@F:.o=.c) -o $@
 
 $(LIB): $(OBJS)
 	$(AR) $(ARFLAGS) $@ $^
 
 $(BIN): $(LIB)
-	$(CC) $(CFLAGS) src/$(@F:.exe=.c) -o $@ $(LIBSDIR) $(TESTLIB) $(INCLUDE) $(debug)
+	$(CC) $(CFLAGS) src/$(@F:.exe=.c) -o $@ $(LDFLAGS)
 	mv $@ $(BUILDPATH)$(NAME).exe
 
-$(TESTBIN): src/test_rft_conv_param_builder.c
-	$(CC) $(CFLAGS) src/$(@F:.exe=.c) -o $@ $(LIBSDIR) $(TESTLIB) $(INCLUDE) $(debug)
+$(TESTBIN): $(LIB) src/test_rft_conv_param_builder.c
+	$(CC) $(CFLAGS) src/$(@F:.exe=.c) -o $@ $(LDFLAGS)
 
 .PHONY: clean mkbuilddir test
 
-test: $(TESTBIN)
+test: mkbuilddir $(TESTBIN)
 	./$(TESTBIN)
 
 mkbuilddir:
