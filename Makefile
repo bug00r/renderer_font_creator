@@ -1,7 +1,7 @@
 _CFLAGS:=$(CFLAGS)
-CFLAGS+=$(_CFLAGS)
+CFLAGS:=$(_CFLAGS)
 _LDFLAGS:=$(LDFLAGS)
-LDFLAGS+=$(_LDFLAGS)
+LDFLAGS:=$(_LDFLAGS)
 
 ARFLAGS?=rcs
 PATHSEP?=/
@@ -37,7 +37,7 @@ CFLAGS+=-std=c11 -Wpedantic -pedantic-errors -Wall -Wextra
 #-ggdb
 #-pg for profiling 
 
-LDFLAGS=-L/c/dev/lib$(BIT_SUFFIX) -L./$(BUILDPATH)
+LDFLAGS+=-L/c/dev/lib$(BIT_SUFFIX) -L./$(BUILDPATH)
 CFLAGS+=-I/c/dev/include/freetype2 -I/c/dev/include -I/usr/include -I/usr/include/freetype2 -I./src
 
 _SRC_FILES=rft_converter_main rft_conv_param_builder
