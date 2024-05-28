@@ -38,7 +38,7 @@ CFLAGS+=-std=c11 -Wpedantic -pedantic-errors -Wall -Wextra
 #-pg for profiling 
 
 LDFLAGS+=-L/c/dev/lib$(BIT_SUFFIX) -L./$(BUILDPATH)
-CFLAGS+=-I/c/dev/include/freetype2 -I/c/dev/include -I/usr/include -I/usr/include/freetype2 -I./src
+CFLAGS+=-I./src -I/c/dev/include/freetype2 -I/c/dev/include -I/usr/include -I/usr/include/freetype2
 
 _SRC_FILES=rft_converter_main rft_conv_param_builder
 SRC=$(patsubst %,src/%,$(patsubst %,%.c,$(_SRC_FILES)))
