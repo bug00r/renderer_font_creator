@@ -52,7 +52,7 @@ OBJS=$(BUILDPATH)rft_converter_main.o $(BUILDPATH)rft_converter.o $(BUILDPATH)rf
 LIBNAME=lib$(NAME).a
 LIB=$(BUILDPATH)$(LIBNAME)
 
-LDFLAGS+=$(patsubst %,-l%, $(NAME) freetype geometry utilsmath mat vec dl_list )
+LDFLAGS+=$(patsubst %,-l%, $(NAME) freetype batkit )
 TESTSRC=$(patsubst %,src/%,$(patsubst %,%.c, test_rft_conv_param_builder rft_conv_param_builder ))
 TESTBIN=$(BUILDPATH)test_rft_conv_param_builder.exe
 
